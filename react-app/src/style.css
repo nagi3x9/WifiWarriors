@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+:root {
+    --bg-color: #050510;
+    --neon-blue: #0ff;
+    --neon-magenta: #f0f;
+    --neon-yellow: #ff0;
+    --font-main: 'DotGothic16', sans-serif;
+    --text-color: #e0e0e0;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+    padding-top: 5vh;
+    overflow-x: hidden;
+}
+
+/* CRT Overlay Effect */
+.crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 4px, 6px 100%;
+    z-index: 999;
+    pointer-events: none;
+}
+
+.container {
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 3rem;
+    color: #fff;
+    text-shadow: 2px 0 var(--neon-magenta), -2px 0 var(--neon-blue);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    color: var(--neon-yellow);
+    font-size: 1.2rem;
+    animation: blink 1.5s infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Navigation */
+.main-nav {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    border-top: 1px solid var(--neon-blue);
+    border-bottom: 1px solid var(--neon-blue);
+    padding: 10px 0;
+    background: rgba(0, 255, 255, 0.05);
+}
+
+.nav-link {
+    color: var(--neon-blue);
+    text-decoration: none;
+    font-size: 1.2rem;
+    padding: 5px 15px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.nav-link:hover {
+    border-color: var(--neon-blue);
+    background: rgba(0, 255, 255, 0.1);
+    text-shadow: 0 0 5px var(--neon-blue);
+}
+
+/* Panels */
+.status-panel {
+    background: rgba(0, 20, 20, 0.8);
+    border: 3px solid var(--neon-blue);
+    padding: 20px;
+    box-shadow: 0 0 15px var(--neon-blue), inset 0 0 15px var(--neon-blue);
+    position: relative;
+}
+
+.panel-header h2 {
+    color: var(--neon-magenta);
+    text-align: center;
+    border-bottom: 2px dashed var(--neon-magenta);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.status-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 255, 255, 0.05);
+    padding: 10px 15px;
+    border-left: 4px solid var(--neon-magenta);
+}
+
+.status-label {
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.status-value {
+    font-size: 1.5rem;
+    color: var(--neon-yellow);
+    text-shadow: 0 0 5px var(--neon-yellow);
+}
+
+.status-row.atk { border-color: #ff3333; }
+.status-row.atk .status-value { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
+
+.status-row.spd { border-color: #33ff33; }
+.status-row.spd .status-value { color: #33ff33; text-shadow: 0 0 5px #33ff33; }
+
+.status-row.job { border-color: var(--neon-blue); }
+.status-row.job .status-value { color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); }
+
+.status-row.stance { border-color: var(--neon-magenta); }
+.status-row.stance .status-value { color: var(--neon-magenta); text-shadow: 0 0 5px var(--neon-magenta); }
+
+.cyber-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 15px;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid var(--neon-yellow);
+    color: var(--neon-yellow);
+    font-family: var(--font-main);
+    font-size: 1.2rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.cyber-btn:hover {
+    background: var(--neon-yellow);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-yellow);
+}
+
+.loading, .error-msg {
+    text-align: center;
+    color: var(--neon-magenta);
+    padding: 20px;
+    font-size: 1.2rem;
+}
