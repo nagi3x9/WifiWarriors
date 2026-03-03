@@ -3,8 +3,33 @@ import useWarriorStore from '../store/useWarriorStore';
 export default function Roster() {
   const { warriors, deleteWarrior } = useWarriorStore();
 
+  const getAvatarImage = (job) => {
+    switch (job) {
+      case 'ナイト': return '/avatars/knight.png';
+      case 'アーチャー': return '/avatars/archer.png';
+      case 'メイジ': return '/avatars/mage.png';
+      case 'シーフ': return '/avatars/thief.png';
+      default: return null;
+    }
+  };
+
   return (
     <div className="status-panel">
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes floatAnim {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-3px); }
+          100% { transform: translateY(0px); }
+        }
+        .avatar-float {
+          animation: floatAnim 2s infinite ease-in-out;
+          height: 64px;
+          width: auto;
+          max-width: 80px;
+          object-fit: contain;
+          image-rendering: pixelated;
+        }
+      `}} />
       <div className="panel-header">
         <h2>WARRIOR ROSTER ({warriors.length}/3)</h2>
         <div className="scanline"></div>
@@ -27,12 +52,19 @@ export default function Roster() {
                 background: 'rgba(0, 255, 255, 0.05)',
                 position: 'relative'
               }}>
-                <h3 style={{ color: 'var(--neon-yellow)', marginBottom: '10px', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>No.{index + 1} {warrior.job}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {getAvatarImage(warrior.job) && (
+                      <img src={getAvatarImage(warrior.job)} className="avatar-float" alt={warrior.job} />
+                    )}
+                    <h3 style={{ color: 'var(--neon-yellow)', fontSize: '1.2rem', margin: 0 }}>
+                      No.{index + 1} {warrior.job}
+                    </h3>
+                  </div>
                   <span style={{ fontSize: '0.8rem', color: '#888' }}>
                     {new Date(warrior.capturedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </span>
-                </h3>
+                </div>
 
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 30%', border: '1px solid #ff3333', padding: '5px', textAlign: 'center' }}>

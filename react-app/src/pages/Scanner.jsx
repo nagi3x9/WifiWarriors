@@ -30,7 +30,7 @@ export default function Scanner() {
       baseDef = 5;  // 不安定回線
     }
 
-    const hp = 100;
+    const hp = 500;
     const baseCrit = 5;
     const baseEvo = 5;
 
@@ -46,82 +46,51 @@ export default function Scanner() {
     let synergyMsg = "";
 
     switch (jobName) {
-      case 'ヘビーナイト (重騎士)':
-        if (atk >= 30) {
-          atk = Math.round(atk * 1.5);
-          def += 30;
-          synergyMsg = "【SYNERGY(大環境適合)】: 高い攻撃力（太い帯域）により重装甲とメガクラッシュを獲得！";
+      case 'ナイト':
+        if (def >= 15) {
+           atk = Math.round(atk * 1.2);
+           def += 20;
+           synergyMsg = "【SYNERGY(大環境適合)】: 安定した固定回線により、強固な防壁（シールドバッシュ）を獲得！";
         } else {
-          atk = Math.round(atk * 0.5);
-          def = Math.round(def * 0.5);
-          synergyMsg = "【UNMATCH(環境不適合)】: 細い回線では重鎧を支えきれず、ステータスが半減した…";
+           atk = Math.round(atk * 0.8);
+           synergyMsg = "【UNMATCH(環境不適合)】: 不安定な回線では重い盾を構えきれず、ステータスがダウンした…";
         }
         break;
 
-      case 'スナイパー (狙撃手)':
-        if (atk >= 20 && spd <= 15) {
-          crit = 80; // ほぼクリティカル
-          spd = 1; // 超鈍足
-          synergyMsg = "【SYNERGY(大環境適合)】: ラグを利用して完全に気配を消し、必殺の狙撃（超高会心率）を獲得！";
+      case 'アーチャー':
+        // Pingが関係する
+        if (spd >= 15) {
+           crit = 60; // 低遅延なら高確率クリティカル
+           spd = Math.round(spd * 1.3);
+           synergyMsg = "【SYNERGY(大環境適合)】: ラグの無い回線により、精密な予測射撃（高会心）を獲得！";
         } else {
-          crit = 1;
-          synergyMsg = "【UNMATCH(環境不適合)】: この環境では気配を消しきれず、狙撃手が機能しない…";
+           crit = 30; // 逆に高Ping（ラグ）で予測不能なクリティカル
+           synergyMsg = "【STABLE(ラグ利用)】: ラグにより矢の軌道が予測不能になり、変則的なクリティカルが発生！";
         }
         break;
 
-      case 'アサシン (暗殺者)':
-        if (spd >= 20) {
-          spd = Math.round(spd * 1.5);
-          evasion = 50; // 残像
-          synergyMsg = "【SYNERGY(大環境適合)】: 低Pingの恩恵で限界を超えたスピード（大回避率）を獲得！";
+      case 'メイジ':
+        // ダウンリンク（ATK）特化
+        if (atk >= 25) {
+           atk = Math.round(atk * 1.5);
+           def = Math.round(def * 0.5); // 防御は下がる
+           synergyMsg = "【SYNERGY(大環境適合)】: 太い帯域限界まで魔力を込めた超火力（ファイアウォール）を獲得！";
         } else {
-          spd = 5;
-          evasion = 0;
-          synergyMsg = "【UNMATCH(環境不適合)】: 回線ラグにより足がもつれ、アサシンとしての機動力を喪失した…";
+           atk = Math.round(atk * 1.2);
+           synergyMsg = "【UNMATCH(環境不適合)】: 回線が細く、本来の魔力が発揮できない…";
         }
         break;
 
-      case 'トリックスター (奇術師)':
-        if (spd >= 15 && atk <= 15) {
-          evasion = 30;
-          crit = 30;
-          synergyMsg = "【SYNERGY(大環境適合)】: 攻撃力は低いがPingが良い環境を利用し、トリッキーな動きで相手を翻弄！";
+      case 'シーフ':
+        // スピードと回避特化
+        if (spd >= 20 || atk <= 15) {
+           spd = Math.round(spd * 1.5);
+           evasion = 40;
+           synergyMsg = "【SYNERGY(大環境適合)】: パケットの隙間を縫う速度（大回避率）を獲得！";
         } else {
-          evasion = 1;
-          synergyMsg = "【UNMATCH(環境不適合)】: この回線では手品がバレてしまうようだ。";
+           evasion = 15;
+           synergyMsg = "【STABLE(安定適合)】: 可もなく不可もない環境で、手堅く立ち回る。";
         }
-        break;
-
-      case 'カースメイカー (呪術師)':
-        if (atk < 15 && spd <= 12) {
-          crit = 60;
-          evasion = 20;
-          synergyMsg = "【SYNERGY(大環境適合)】: 劣悪なラグ・細い回線環境によりウイルスの培養が完了した！（高クリティカル）";
-        } else {
-          atk = 1;
-          crit = 1;
-          synergyMsg = "【UNMATCH(環境不適合)】: 通信がクリーンすぎて呪いが作れない…最強の環境における最弱の存在。";
-        }
-        break;
-
-      case 'ハッカー (電脳盗賊)':
-        if (netData.type === 'wifi' || netData.effectiveType === 'wifi') {
-          spd = Math.round(spd * 1.2);
-          crit = 25;
-          evasion = 25;
-          synergyMsg = "【SYNERGY(大環境適合)】: Wi-Fiネットワークのパケットを傍受し、全ての能力が底上げされた！";
-        } else {
-          atk = Math.round(atk * 0.8);
-          synergyMsg = "【UNMATCH(環境不適合)】: Wi-Fiではないため、本来のハッキング能力が発揮できない。";
-        }
-        break;
-
-      case 'パラディン (聖騎士)':
-        // バランス型。尖ったシナジーはないが全体的に強化
-        atk = Math.round(atk * 1.2);
-        spd = Math.round(spd * 1.2);
-        def = Math.round(def * 1.2);
-        synergyMsg = "【STABLE(安定適合)】: 聖なる加護により、全ての基礎ステータスが安定して1.2倍に強化された！";
         break;
       
       default:
@@ -203,14 +172,11 @@ export default function Scanner() {
                 <p style={{ color: 'var(--neon-yellow)', marginBottom: '15px' }}>
                   ＞＞＞ この素体にインストールする職業を選択せよ ＜＜＜
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxWidth: '400px', margin: '0 auto' }}>
-                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('ヘビーナイト (重騎士)')}>ヘビーナイト</button>
-                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('スナイパー (狙撃手)')}>スナイパー</button>
-                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('アサシン (暗殺者)')}>アサシン</button>
-                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('トリックスター (奇術師)')}>トリックスター</button>
-                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('カースメイカー (呪術師)')}>カースメイカー</button>
-                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('ハッカー (電脳盗賊)')}>ハッカー</button>
-                  <button className="cyber-btn" style={{ gridColumn: '1 / -1', borderColor: 'var(--neon-yellow)', color: 'var(--neon-yellow)' }} onClick={() => handleSelectJob('パラディン (聖騎士)')}>パラディン (バランス型)</button>
+                <div className="action-buttons" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxWidth: '400px', margin: '0 auto' }}>
+                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('ナイト')}>ナイト</button>
+                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('アーチャー')}>アーチャー</button>
+                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('メイジ')}>メイジ</button>
+                  <button className="cyber-btn" style={{ padding: '10px 5px', fontSize: '0.9rem' }} onClick={() => handleSelectJob('シーフ')}>シーフ</button>
                 </div>
               </div>
             ) : (

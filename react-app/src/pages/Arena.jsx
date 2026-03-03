@@ -7,7 +7,7 @@ import ArenaBattle from './ArenaBattle';
 
 export default function Arena() {
   const { warriors } = useWarriorStore();
-  const { playerId } = useAuthStore();
+  const { playerId, playerName } = useAuthStore();
   
   const [selectedWarriorId, setSelectedWarriorId] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -40,8 +40,13 @@ export default function Arena() {
     if (snapshot.exists()) {
       const playersInLobby = snapshot.val();
       
-      // 自分以外で待機している人を探す
-      const opponentId = Object.keys(playersInLobby).find(id => id !== playerId);
+      // タイムスタンプが20秒以内の、自分以外で待機している人を探す（古いゴーストデータを除外）
+      const now = Date.now();
+      const opponentId = Object.keys(playersInLobby).find(id => {
+        const p = playersInLobby[id];
+        const isRecent = (now - p.timestamp) < 20000; 
+        return id !== playerId && isRecent && !p.matchFound;
+      });
       
       if (opponentId) {
         // ========== 自分が相手を見つけた側 ==========
@@ -50,14 +55,16 @@ export default function Arena() {
         // 1. バトルルーム（対戦用の場所）を作成する
         const battleId = `battle_${playerId}_${opponentId}`;
         await set(ref(database, `battles/${battleId}`), {
-          player1: { id: playerId, warrior: selectedWarrior },
-          player2: { id: opponentId, warrior: opponentData.warrior },
-          status: 'ready'
+          player1: { id: playerId, name: playerName, warrior: selectedWarrior },
+          player2: { id: opponentId, name: opponentData.name || 'UNKNOWN', warrior: opponentData.warrior },
+          status: 'ready',
+          timestamp: Date.now()
         });
 
         // 2. 相手のロビー情報に「対戦相手が見つかったよ」とバトルIDを書き込む
         await set(ref(database, `lobby/${opponentId}/matchFound`), {
           battleId: battleId,
+          opponentName: playerName,
           opponentWarrior: selectedWarrior
         });
 
@@ -74,6 +81,7 @@ export default function Arena() {
     const myLobbyRef = ref(database, `lobby/${playerId}`);
     await set(myLobbyRef, {
       id: playerId,
+      name: playerName,
       warrior: selectedWarrior,
       timestamp: Date.now()
     });
@@ -85,7 +93,7 @@ export default function Arena() {
         if (myData.matchFound) {
           // 誰かが自分を見つけてくれた！
           setBattleId(myData.matchFound.battleId);
-          setOpponent({ warrior: myData.matchFound.opponentWarrior });
+          setOpponent({ name: myData.matchFound.opponentName || 'UNKNOWN', warrior: myData.matchFound.opponentWarrior });
           setMatchFound(true);
           setIsSearching(false);
           
