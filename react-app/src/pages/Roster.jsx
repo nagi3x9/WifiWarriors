@@ -1,4 +1,5 @@
 import useWarriorStore from '../store/useWarriorStore';
+import { Link } from 'react-router-dom';
 
 export default function Roster() {
   const { warriors, deleteWarrior } = useWarriorStore();
@@ -30,9 +31,14 @@ export default function Roster() {
           image-rendering: pixelated;
         }
       `}} />
-      <div className="panel-header">
-        <h2>WARRIOR ROSTER ({warriors.length}/3)</h2>
-        <div className="scanline"></div>
+      <div className="panel-header" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <h2>WARRIOR ROSTER ({warriors.length}/3)</h2>
+          {warriors.length < 3 && (
+            <Link to="/scanner" className="cyber-btn" style={{ padding: '5px 10px', fontSize: '0.9rem', margin: 0, textDecoration: 'none' }}>+ NEW SCAN</Link>
+          )}
+        </div>
+        <div className="scanline" style={{ marginTop: '10px' }}></div>
       </div>
       
       <div className="status-grid" style={{ minHeight: '300px' }}>
@@ -97,9 +103,16 @@ export default function Roster() {
 
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button 
+                    onClick={() => alert('ソロモードのNPCバトル機能は現在開発中です！今後のアップデートをお待ちください。')}
+                    className="cyber-btn" 
+                    style={{ marginTop: 0, padding: '8px', fontSize: '1rem', borderColor: 'var(--neon-blue)', color: 'var(--neon-blue)', flex: 2 }}
+                  >
+                    SOLO BATTLE (NPC戦 - WIP)
+                  </button>
+                  <button 
                     onClick={() => deleteWarrior(warrior.id)}
                     className="cyber-btn" 
-                    style={{ marginTop: 0, padding: '8px', fontSize: '1rem', borderColor: '#ff3333', color: '#ff3333', flex: 1 }}
+                    style={{ marginTop: 0, padding: '8px', fontSize: '1rem', borderColor: '#555', color: '#888', flex: 1 }}
                   >
                     DELETE (削除)
                   </button>

@@ -1,40 +1,67 @@
 import { useState, useEffect } from 'react';
 import useWarriorStore from '../store/useWarriorStore';
 
-export default function Scanner() {
+export default function Scanner({ mode = 'solo', onArenaProceed }) {
   const [networkInfo, setNetworkInfo] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [finalStats, setFinalStats] = useState(null);
   const { saveWarrior, warriors } = useWarriorStore();
 
-  const getNetworkData = () => {
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (!conn) return null;
+  const measureRealNetworkStats = async () => {
+    let downlink = 0;
+    let rtt = 0;
+    let type = 'unknown';
 
-    const downlink = conn.downlink || 0;
-    const rtt = conn.rtt || 0;
-    const effectiveType = conn.effectiveType || 'unknown';
-    const type = conn.type || 'unknown';
-    const saveData = conn.saveData || false;
+    try {
+      // Cross-origin safe way to measure Ping and Download using Image loading
+      const pingStart = performance.now();
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = resolve; // Continue even if image is 404, we just need network RTT
+        img.src = `https://www.google.com/favicon.ico?cacheBuster=${Date.now()}`;
+      });
+      const pingEnd = performance.now();
+      rtt = Math.round(pingEnd - pingStart);
+
+      // Measure Download Speed using a larger known payload (Wikipedia logo ~100KB as fallback instead of 1MB to ensure stability)
+      const dlSize = 100000; // ~100KB payload
+      const dlStart = performance.now();
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = `https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2012.svg?cacheBuster=${Date.now()}`;
+      });
+      const dlEnd = performance.now();
+
+      const durationInSeconds = (dlEnd - dlStart) / 1000;
+      const bitsLoaded = dlSize * 8;
+      const speedBps = bitsLoaded / Math.max(0.1, durationInSeconds); // bps
+      downlink = parseFloat((speedBps / (1024 * 1024)).toFixed(1)); // Mbps
+      type = 'measured';
+
+    } catch (err) {
+      console.error("Speed test failed:", err);
+      // Fallback if fetch fails (e.g. offline or blocked)
+      downlink = parseFloat((Math.random() * 10 + 2).toFixed(1));
+      rtt = Math.floor(Math.random() * 80 + 20);
+      type = 'pseudo';
+    }
 
     // 基礎ステータス (Jobsによる補正前)
     const baseAtk = Math.max(10, Math.min(50, Math.round(downlink * 5)));
     const baseSpd = rtt > 0 ? Math.max(5, Math.min(30, Math.round(1000 / Math.max(10, rtt)))) : 10;
     
-    // DEFの基礎値計算
-    let baseDef = 10;
-    if (type === 'wifi' || type === 'ethernet') {
-      baseDef = 15; // 安定回線
-    } else if (type === 'cellular' || effectiveType === '4g' || effectiveType === '3g') {
-      baseDef = 5;  // 不安定回線
-    }
-
-    const hp = 500;
+    // DEFの基礎値計算: ダウンロード速度が遅いほど防御力が高い（最大30, 最小5）
+    // ATKと反比例するように調整。10Mbpsで最低の5、理論値0Mbpsで最高の30。
+    let baseDef = Math.max(5, Math.min(30, Math.round(30 - (downlink * 2.5))));
+    const hp = 150; // Adjusted from 500 for faster battle pacing
     const baseCrit = 5;
     const baseEvo = 5;
 
-    return { baseAtk, baseSpd, baseDef, hp, baseCrit, baseEvo, downlink, rtt, effectiveType, type, saveData };
+    return { baseAtk, baseSpd, baseDef, hp, baseCrit, baseEvo, downlink, rtt, effectiveType: type, type, saveData: false, isFallback: type === 'pseudo' };
   };
 
   const calculateFinalStats = (netData, jobName) => {
@@ -43,71 +70,63 @@ export default function Scanner() {
     let def = netData.baseDef;
     let crit = netData.baseCrit;
     let evasion = netData.baseEvo;
+    let hp = netData.hp;
     let synergyMsg = "";
 
     switch (jobName) {
       case 'ナイト':
-        if (def >= 15) {
-           atk = Math.round(atk * 1.2);
-           def += 20;
-           synergyMsg = "【SYNERGY(大環境適合)】: 安定した固定回線により、強固な防壁（シールドバッシュ）を獲得！";
-        } else {
-           atk = Math.round(atk * 0.8);
-           synergyMsg = "【UNMATCH(環境不適合)】: 不安定な回線では重い盾を構えきれず、ステータスがダウンした…";
-        }
+        hp = Math.round(hp * 1.4);    // HP +40%
+        def = Math.round(def * 2.0);   // DEF +100%
+        atk = Math.max(1, Math.round(atk * 0.6)); // ATK -40%
+        spd = Math.max(1, Math.round(spd * 0.8)); // SPD -20%
+        synergyMsg = "【重装甲】 攻撃と速度を大きく犠牲にし、強固な硬さを手に入れた！";
         break;
 
       case 'アーチャー':
-        // Pingが関係する
-        if (spd >= 15) {
-           crit = 60; // 低遅延なら高確率クリティカル
-           spd = Math.round(spd * 1.3);
-           synergyMsg = "【SYNERGY(大環境適合)】: ラグの無い回線により、精密な予測射撃（高会心）を獲得！";
-        } else {
-           crit = 30; // 逆に高Ping（ラグ）で予測不能なクリティカル
-           synergyMsg = "【STABLE(ラグ利用)】: ラグにより矢の軌道が予測不能になり、変則的なクリティカルが発生！";
-        }
+        crit += 50;                    // 会心率 +50%
+        spd = Math.round(spd * 1.3);   // SPD +30%
+        def = Math.max(1, Math.round(def * 0.6)); // DEF -40%
+        synergyMsg = "【狙撃手】 防御を捨て、先制クリティカルにすべてを懸ける！";
         break;
 
       case 'メイジ':
-        // ダウンリンク（ATK）特化
-        if (atk >= 25) {
-           atk = Math.round(atk * 1.5);
-           def = Math.round(def * 0.5); // 防御は下がる
-           synergyMsg = "【SYNERGY(大環境適合)】: 太い帯域限界まで魔力を込めた超火力（ファイアウォール）を獲得！";
-        } else {
-           atk = Math.round(atk * 1.2);
-           synergyMsg = "【UNMATCH(環境不適合)】: 回線が細く、本来の魔力が発揮できない…";
-        }
+        atk = Math.round(atk * 1.6);   // ATK +60%
+        def = Math.max(1, Math.round(def * 0.3)); // DEF -70%
+        spd = Math.max(1, Math.round(spd * 0.7)); // SPD -30%
+        synergyMsg = "【超火力】 速さと装甲を削り、一撃必殺の魔力を引き出した！";
         break;
 
       case 'シーフ':
-        // スピードと回避特化
-        if (spd >= 20 || atk <= 15) {
-           spd = Math.round(spd * 1.5);
-           evasion = 40;
-           synergyMsg = "【SYNERGY(大環境適合)】: パケットの隙間を縫う速度（大回避率）を獲得！";
-        } else {
-           evasion = 15;
-           synergyMsg = "【STABLE(安定適合)】: 可もなく不可もない環境で、手堅く立ち回る。";
-        }
+        spd = Math.round(spd * 1.8);   // SPD +80%
+        evasion += 40;                 // 回避率 +40%
+        atk = Math.max(1, Math.round(atk * 0.6)); // ATK -40%
+        synergyMsg = "【スピードスター】 力のすべてをスピードに回し、絶対回避に特化！";
         break;
       
       default:
         break;
     }
 
-    return { atk, spd, def, crit, evasion, hp: netData.hp, job: jobName, synergyMsg };
+    return { atk, spd, def, crit, evasion, hp, job: jobName, synergyMsg };
   };
 
-  const handleScan = () => {
+  const [scanStatusMsg, setScanStatusMsg] = useState('');
+
+  const handleScan = async () => {
     setIsScanning(true);
     setSelectedJob(null);
     setFinalStats(null);
+    setScanStatusMsg('Measuring Ping (RTT)...');
+    
+    const result = await measureRealNetworkStats();
+    
+    setScanStatusMsg('Analyzing Download Speed...');
+    // Add a tiny delay so the user can read the message (game feel)
     setTimeout(() => {
-      setNetworkInfo(getNetworkData());
+      setNetworkInfo(result);
       setIsScanning(false);
-    }, 500); // Fake delay for cyber effect
+      setScanStatusMsg('');
+    }, 800);
   };
 
   useEffect(() => {
@@ -148,13 +167,21 @@ export default function Scanner() {
 
       <div className="status-grid">
         {isScanning ? (
-          <div className="loading" style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: 'var(--neon-blue)' }}>[ SYSTEM ] Scanning network protocols...</span>
+          <div className="loading" style={{ minHeight: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: 'var(--neon-blue)', marginBottom: '10px' }}>[ SYSTEM ] Executing active speed test...</span>
+            <span style={{ color: 'var(--neon-yellow)' }}>{scanStatusMsg}</span>
           </div>
         ) : networkInfo ? (
           <>
             <div style={{ textAlign: 'center', marginBottom: '20px', color: '#fff' }}>
-              <div style={{ color: 'var(--neon-blue)', marginBottom: '5px' }}>[ NETWORK BASE STATS CAPTURED ]</div>
+              <div style={{ color: networkInfo.isFallback ? 'var(--neon-yellow)' : 'var(--neon-blue)', marginBottom: '5px' }}>
+                {networkInfo.isFallback ? '[ SPEED TEST FAILED - PSEUDO STATS GENERATED ]' : '[ REAL NETWORK STATS CAPTURED ]'}
+              </div>
+              {networkInfo.isFallback && (
+                <div style={{ fontSize: '0.75rem', color: '#ffaa00', marginBottom: '10px' }}>
+                  ※通信制限やエラーにより実測できなかったため、仮想データを生成しました。
+                </div>
+              )}
               
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '10px', flexWrap: 'wrap' }}>
                 <div style={{ border: '1px solid #ff3333', padding: '5px 10px' }}><span style={{fontSize:'0.7rem', color:'#ff3333'}}>ATK:</span> {networkInfo.baseAtk}</div>
@@ -218,20 +245,37 @@ export default function Scanner() {
                   <button onClick={() => setSelectedJob(null)} className="cyber-btn" style={{ flex: 1, borderColor: '#555', color: '#aaa' }}>
                     選び直す
                   </button>
-                  <button 
-                    onClick={handleSave} 
-                    className="cyber-btn" 
-                    style={{ 
-                      flex: 2,
-                      borderColor: 'var(--neon-blue)', 
-                      color: 'var(--neon-blue)',
-                      opacity: warriors.length >= 3 ? 0.5 : 1,
-                      cursor: warriors.length >= 3 ? 'not-allowed' : 'pointer'
-                    }}
-                    disabled={warriors.length >= 3}
-                  >
-                    {warriors.length >= 3 ? 'ROSTER FULL (MAX 3)' : 'SAVE WARRIOR (記録)'}
-                  </button>
+                  {mode === 'solo' ? (
+                    <button 
+                      onClick={handleSave} 
+                      className="cyber-btn" 
+                      style={{ 
+                        flex: 2,
+                        borderColor: 'var(--neon-blue)', 
+                        color: 'var(--neon-blue)',
+                        opacity: warriors.length >= 3 ? 0.5 : 1,
+                        cursor: warriors.length >= 3 ? 'not-allowed' : 'pointer'
+                      }}
+                      disabled={warriors.length >= 3}
+                    >
+                      {warriors.length >= 3 ? 'ROSTER FULL (MAX 3)' : 'SAVE WARRIOR (記録)'}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        const warrior = { ...networkInfo, ...finalStats, id: 'arena_warrior_' + Date.now() };
+                        if (onArenaProceed) onArenaProceed(warrior);
+                      }} 
+                      className="cyber-btn" 
+                      style={{ 
+                        flex: 2,
+                        borderColor: '#ff3333', 
+                        color: '#ff3333'
+                      }}
+                    >
+                      ENTER MATCHMAKING (直通アリーナへ)
+                    </button>
+                  )}
                 </div>
               </div>
             )}

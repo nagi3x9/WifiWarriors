@@ -150,13 +150,14 @@ export default function ArenaBattle({ battleId, onSurrender }) {
       if (isEvade) {
          text = `【MISS】 ${myData.warrior.job} の通常攻撃！...しかし ${oppData.warrior.job} はすばやく回避した！`;
       } else {
+        // 純粋な ATK - DEF (ただし最低1保証)。クリティカル時は完全防御無視で大ダメージ！
         let baseDmg = Math.max(1, myData.warrior.atk - oppData.warrior.def);
         let critText = "";
 
-        // クリティカル判定
+        // クリティカル判定 (防御力無視)
         if (Math.random() * 100 < myData.warrior.crit) {
-          baseDmg = Math.round(baseDmg * 1.5); // 1.5倍ダメージ
-          critText = "【CRITICAL!!】 痛恨の一撃！ ";
+          baseDmg = Math.round(myData.warrior.atk * 1.5); // 防御力を計算外にする
+          critText = "【CRITICAL!!】 相手の装甲を貫く痛恨の一撃！ ";
         }
 
         // 相手が防御している場合、ダメージを半減
@@ -174,14 +175,16 @@ export default function ArenaBattle({ battleId, onSurrender }) {
       updates[`${myRole}/isDodging`] = false;
 
     } else if (actionType === 'FAST_ATTACK') {
+      // FAST: 基礎攻撃力は半分になるが、高いSPDがあればそれを固定ダメージとして上乗せできる
       let baseDmg = Math.max(1, Math.round(myData.warrior.atk * 0.5) - oppData.warrior.def);
-      let spdBonus = Math.floor(myData.warrior.spd * 0.2); // SPDの20%を追加ダメージ
+      let spdBonus = Math.floor(myData.warrior.spd * 0.8); // 速度特化職なら大きな固定ダメージ源に
       let totalBase = baseDmg + spdBonus;
       
       let critText = "";
+      // クリティカル判定 (防御無視)
       if (Math.random() * 100 < myData.warrior.crit) {
-        totalBase = Math.round(totalBase * 1.5);
-        critText = "【CRITICAL!!】 ";
+        totalBase = Math.round(myData.warrior.atk * 0.8) + spdBonus; 
+        critText = "【CRITICAL!!】 急所を突いた！ ";
       }
 
       if (oppData.isDefending) {
@@ -202,12 +205,13 @@ export default function ArenaBattle({ battleId, onSurrender }) {
       if (!isHit || isEvade) {
          text = `【MISS】 ${myData.warrior.job} は渾身の強攻撃を放った！...しかし大振りすぎて外れてしまった！`;
       } else {
-        let baseDmg = Math.max(1, Math.round(myData.warrior.atk * 1.5) - oppData.warrior.def);
+        // HEAVY: ATKそのものを2倍にしてから防御を引くため、硬い相手も強引に突破できる
+        let baseDmg = Math.max(1, Math.round(myData.warrior.atk * 2.0) - oppData.warrior.def);
         let critText = "";
         
-        // クリティカル率2倍
+        // クリティカル率2倍。クリティカル時はさらに威力が跳ね上がる（防御無視）
         if (Math.random() * 100 < (myData.warrior.crit * 2)) {
-          baseDmg = Math.round(baseDmg * 1.5);
+          baseDmg = Math.round(myData.warrior.atk * 2.5);
           critText = "【SUPER CRITICAL!!】 致命的な痛恨の一撃！！ ";
         }
 
@@ -243,34 +247,34 @@ export default function ArenaBattle({ battleId, onSurrender }) {
 
       switch(job) {
         case 'ナイト':
-          // 防御力依存のダメージ＋次ターン防御
-          baseDmg = Math.max(1, myData.warrior.def - Math.round(oppData.warrior.def * 0.5));
+          // ナイトはATKが低いため、自身の高いDEFを武器にして殴る
+          baseDmg = Math.max(1, Math.round(myData.warrior.def * 1.8) - oppData.warrior.def);
           finalDamage = applyDefense(baseDmg);
           updates[`${myRole}/isDefending`] = true;
-          text = `【SKILL】${job} の「シールドバッシュ」！ 鉄壁の盾で ${finalDamage} のダメージを与え、そのまま防御態勢をとった！`;
+          text = `【SKILL】${job} の「シールドバッシュ」！ 自身の重装甲を武器に ${finalDamage} の強烈なダメージを与え、防御態勢をとった！`;
           break;
 
         case 'アーチャー':
-          // 相手の防御を無視＋確定クリティカル（ただし使用後自分のSPDとEVAが次ターン機能しなくなるペナルティは行動順側で処理が難しいので割愛か簡易化）
-          baseDmg = myData.warrior.atk * 2; 
+          // 完全な防御無視攻撃（シーフなど回避持ちには当たるが、硬いナイトを一撃で抜く切り札）
+          baseDmg = Math.round(myData.warrior.atk * 1.5); 
           finalDamage = applyDefense(baseDmg);
           updates[`${myRole}/isDodging`] = false; 
-          text = `【SKILL】${job} の「精密狙撃」！ 必殺の矢が急所を貫き ${finalDamage} のダメージ！`;
+          text = `【SKILL】${job} の「精密狙撃」！ 相手の装甲の隙間を貫き ${finalDamage} の確実なダメージ！`;
           break;
 
         case 'メイジ':
-          // 相手の防御を半減計算
-          baseDmg = Math.max(1, Math.round(myData.warrior.atk * 1.5) - Math.round(oppData.warrior.def * 0.5));
+          // ATKが2倍になっているため、さらに威力倍率をかけて圧倒的なパワーで押し潰す
+          baseDmg = Math.max(1, Math.round(myData.warrior.atk * 2.5) - oppData.warrior.def);
           finalDamage = applyDefense(baseDmg);
-          text = `【SKILL】${job} の「ファイアウォール」！ 相手の装甲を焼き尽くし ${finalDamage} のダメージ！`;
+          text = `【SKILL】${job} の「ファイアウォール」！ 圧倒的な魔力で ${finalDamage} の甚大なダメージ！`;
           break;
 
         case 'シーフ':
-          // 中ダメージ＋次ターン絶対回避
-          baseDmg = Math.max(1, Math.round(myData.warrior.atk * 0.8) - oppData.warrior.def);
+          // 確定でダメージを与えつつ、回避態勢に移行
+          baseDmg = Math.max(1, Math.round(myData.warrior.atk * 1.2) - oppData.warrior.def);
           finalDamage = applyDefense(baseDmg);
           updates[`${myRole}/isDodging`] = true;
-          text = `【SKILL】${job} の「ステルス行動」！ ${finalDamage} ダメージを与えつつ、暗闇に完全に身を潜めた！（次ターン攻撃を絶対回避）`;
+          text = `【SKILL】${job} の「ステルス行動」！ 俊敏な一撃で ${finalDamage} ダメージを与え、暗闇に身を潜めた！（次ターン攻撃を絶対回避）`;
           break;
           
         default:
@@ -312,11 +316,16 @@ export default function ArenaBattle({ battleId, onSurrender }) {
 
   // Helper function to map job names to custom avatar images
   const getAvatarImage = (job) => {
+    // import.meta.env.BASE_URL is usually '/' for local root, or '/WifiWarriors/' for GitHub Pages
+    const base = import.meta.env.BASE_URL || '/';
+    // Ensure no double slashes if base has a trailing slash
+    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+
     switch (job) {
-      case 'ナイト': return '/avatars/knight.png';
-      case 'アーチャー': return '/avatars/archer.png';
-      case 'メイジ': return '/avatars/mage.png';
-      case 'シーフ': return '/avatars/thief.png';
+      case 'ナイト': return `${cleanBase}/avatars/knight.png`;
+      case 'アーチャー': return `${cleanBase}/avatars/archer.png`;
+      case 'メイジ': return `${cleanBase}/avatars/mage.png`;
+      case 'シーフ': return `${cleanBase}/avatars/thief.png`;
       default: return null;
     }
   };
@@ -476,7 +485,14 @@ export default function ArenaBattle({ battleId, onSurrender }) {
             <div style={{ fontSize: '1.5rem', color: battleState.winner === myRole ? 'var(--neon-blue)' : '#ff3333', marginBottom: '20px' }}>
               {battleState.winner === myRole ? 'VICTORY!!' : 'DEFEAT...'}
             </div>
-            <button className="cyber-btn" onClick={onSurrender}>
+            <button className="cyber-btn" onClick={() => {
+              // Delete the battle from DB when exiting finished battle
+              if (battleState.winner === myRole) {
+                // Only the winner cleans up to avoid race conditions
+                // update(ref(database, `battles/${battleId}`), { status: 'closed' });
+              }
+              onSurrender();
+            }}>
               EXIT BATTLE (アリーナへ戻る)
             </button>
           </div>
@@ -486,7 +502,15 @@ export default function ArenaBattle({ battleId, onSurrender }) {
         {!isFinished && (
            <button 
              className="cyber-btn" 
-             onClick={onSurrender}
+             onClick={async () => {
+               // Firebaseに降参を通知
+               await update(ref(database, `battles/${battleId}`), {
+                 status: 'finished',
+                 winner: opponentRole,
+                 logs: [...(battleState.logs || []), { text: `${myData.warrior.job} は逃げ出した！ 相手の勝利！`, timestamp: Date.now() }]
+               });
+               onSurrender();
+             }}
              style={{ marginTop: '20px', borderColor: '#555', color: '#888', padding: '5px' }}
            >
              SURRENDER (降参して戻る)

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Home from './pages/Home';
 import Scanner from './pages/Scanner';
 import Roster from './pages/Roster';
 import Arena from './pages/Arena';
@@ -69,15 +70,15 @@ function App() {
           </div>
 
           <nav className="main-nav">
-            <Link to="/" className="nav-link">SCANNER</Link>
-            <Link to="/roster" className="nav-link">ROSTER</Link>
-            <Link to="/arena" className="nav-link">ARENA</Link>
+            <Link to="/" className="nav-link">HOME</Link>
+            <Link to="/arena" className="nav-link" style={{ borderColor: '#ff3333', color: '#ff3333' }}>ARENA</Link>
           </nav>
         </header>
 
         <main>
           <Routes>
-            <Route path="/" element={<Scanner />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/scanner" element={<Scanner />} />
             <Route path="/roster" element={<Roster />} />
             <Route path="/arena" element={<Arena />} />
           </Routes>
